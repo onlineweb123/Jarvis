@@ -250,3 +250,36 @@ addLog('Jarvis online');
 
 // Expose for debugging
 window.Jarvis = { state, fetchWeather, fetchNews, handleCommand };
+
+recognition.onresult = function(event) {
+    let command = event.results[0][0].transcript.toLowerCase();
+    console.log("Voice Command:", command);
+    
+    if(command.includes("hi") || command.includes("hello")) {
+        speak("Hello Maathu, I am online and ready.");
+    }
+    else if(command.includes("time")) {
+        let t = new Date().toLocaleTimeString();
+        speak("The time is " + t);
+    }
+    else if(command.includes("date")) {
+        let d = new Date().toLocaleDateString();
+        speak("Today's date is " + d);
+    }
+    else if(command.includes("battery")) {
+        navigator.getBattery().then(b => {
+            speak("Your battery is " + Math.round(b.level * 100) + " percent");
+        });
+    }
+    else if(command.includes("open youtube")) {
+        speak("Opening YouTube Maathu");
+        window.open("https://youtube.com", "_blank");
+    }
+    else if(command.includes("open instagram")) {
+        speak("Opening Instagram");
+        window.open("https://instagram.com", "_blank");
+    }
+    else {
+        speak("Maathu, I heard you say: " + command + ". But I don't have a function for it yet.");
+    }
+};
