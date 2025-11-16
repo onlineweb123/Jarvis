@@ -433,6 +433,72 @@ document.addEventListener('DOMContentLoaded', () => {
     addLog('Jarvis online');
 });
 
+// Add your Gemini API Key here (Get one for free)
+const GEMINI_API_KEY = 'YOUR_GEMINI_API_KEY_HERE';
+
+// Import necessary library (needs a script tag in HTML head for full use, 
+// but for a simple PWA demo, we'll use a direct fetch or a client library if possible)
+
+// Simplified fetch-based AI call for a PWA demo
+async function handleGeminiCommand(command) {
+    if (!GEMINI_API_KEY) {
+        speak("AI செயலாக்கம் இயலவில்லை. Gemini API Key ஐச் சேர்க்கவும்.");
+        return;
+    }
+
+    const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + GEMINI_API_KEY;
+    
+    // System Instruction: Tell Gemini to act like Jarvis
+    const systemInstruction = "நீங்கள் Maathu என்பவருக்கு உதவும் ஒரு உதவியாளர். நீங்கள் ஜார்விஸ் (Jarvis) போல, மரியாதையுடனும், நட்புடனும், அறிவாற்றலுடனும் பதிலளிக்க வேண்டும். நீங்கள் தமிழ் மற்றும் ஆங்கிலத்தில் பதிலளிப்பீர்கள். நீங்கள் தமிழ்ப் பெயர் Maathu க்கு பதிலளிக்கும் போது, நீங்கள் ஜார்விஸ் போல பதிலளிக்க வேண்டும்.";
+
+    const prompt = [
+        {
+            role: "system",
+            parts: [{ text: systemInstruction }]
+        },
+        {
+            role: "user",
+            parts: [{ text: command }]
+        }
+    ];
+
+    try {
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: prompt })
+        });
+
+        if (!response.ok) throw new Error(`API Error: ${response.status}`);
+
+        const data = await response.json();
+        // Extract text from the response
+        const jarvisResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || "மன்னிக்கவும், நான் புரிந்து கொள்ளவில்லை.";
+        speak(jarvisResponse);
+        
+    } catch (e) {
+        console.error("Gemini Error:", e);
+        speak("AI தொடர்பு தோல்வியடைந்தது. API Key அல்லது நெட்வொர்க் இணைப்பைச் சரிபார்க்கவும்.");
+    }
+}
+
+// பழைய handleCommand ஃபங்ஷனை மாற்றவும்
+async function handleCommand(raw) {
+    // ... (existing code for setting lastCommand, addLog, setStatus) ...
+    const cmd = raw.trim().toLowerCase();
+    
+    // Basic commands (weather, time, news) can still be handled locally for speed
+    if (cmd.includes('weather') || cmd.includes('time') || cmd.includes('news') || cmd.includes('status')) {
+        // ... (existing logic for these commands) ...
+    } else {
+        // மற்ற எல்லா கட்டளைகளையும் Gemini-க்கு அனுப்பவும்
+        await handleGeminiCommand(raw); 
+    }
+    
+    // ... (existing finally block) ...
+}
+
+
   </script>
 </body>
 </html>
