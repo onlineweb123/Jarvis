@@ -1,12 +1,66 @@
 <!doctype html>
+<!doctype html>
 <html lang="ta">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Maathu Jarvis — Z Jarvis</title>
   <link rel="manifest" href="./manifest.json" />
-  <link rel="stylesheet" href="./style.css" />
   <meta name="theme-color" content="#05223C" />
+  
+  <style>
+      /* உங்கள் CSS இங்கே மாறாமல் இருக்கட்டும் */
+      :root{
+  --bg:#071428;
+  --panel:#071c2a;
+  --accent:#00d4ff;
+  --muted:#94b7c6;
+  --glass:rgba(255,255,255,0.03);
+  --card:#0b2a36;
+  font-family: "Inter", system-ui, -apple-system, "Helvetica Neue", Arial;
+}
+
+*{box-sizing:border-box}
+html,body,#app{height:100%;margin:0;background:linear-gradient(180deg,var(--bg) 0%, #02121a 100%);color:#e6f7ff}
+.hud{max-width:1100px;margin:18px auto;padding:20px;border-radius:12px;background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);box-shadow:0 10px 40px rgba(2,6,23,0.6)}
+header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+.logo{display:flex;align-items:center;gap:12px}
+.logo img{width:48px;height:48px;border-radius:8px}
+.logo h1{font-size:18px;margin:0;color:var(--accent)}
+.actions button{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted);padding:8px 10px;margin-left:8px;border-radius:8px;cursor:pointer}
+.actions button:hover{color:var(--accent);border-color:rgba(0,212,255,0.15)}
+
+.panel{display:flex;gap:16px}
+.left{flex:1}
+.right{width:320px;display:flex;flex-direction:column;gap:12px}
+
+.holo{height:240px;border-radius:12px;background:linear-gradient(180deg, rgba(0,0,0,0.2), rgba(255,255,255,0.01));border:1px solid rgba(255,255,255,0.03);display:flex;align-items:center;justify-content:center;padding:20px;position:relative;overflow:hidden}
+.holo::after{content:"";position:absolute;width:220%;height:1px;background:linear-gradient(90deg, transparent, rgba(0,212,255,0.08), transparent);transform:translateY(-30px) skewX(-12deg)}
+.holoText{font-size:20px;line-height:1.3;text-align:center;color:var(--muted);max-width:90%}
+
+.controls{margin-top:12px}
+#userInput{width:100%;height:80px;border-radius:10px;padding:12px;background:var(--glass);border:1px solid rgba(255,255,255,0.03);color:#dff7ff;resize:vertical}
+.ctl-row{display:flex;gap:8px;margin-top:8px}
+.ctl-row button{flex:0 0 auto;padding:10px 14px;border-radius:10px;border:0;background:linear-gradient(90deg, rgba(0,212,255,0.06), rgba(0,212,255,0.02));color:var(--accent);cursor:pointer}
+
+.statusLine{margin-top:8px;color:var(--muted);font-size:13px}
+
+.card{background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.03)}
+.card h3{margin:0 0 8px 0;color:var(--accent)}
+.list{list-style:none;padding:0;margin:0;color:var(--muted);font-size:14px}
+.logBox{height:200px;overflow:auto;background:rgba(0,0,0,0.12);padding:8px;border-radius:6px;color:var(--muted);font-family:monospace;font-size:13px}
+
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{background:transparent;border:1px solid rgba(255,255,255,0.04);padding:6px 10px;border-radius:999px;color:var(--muted);cursor:pointer}
+.chip:hover{color:var(--accent)}
+
+footer{margin-top:14px;text-align:center;color:var(--muted);font-size:12px}
+@media(max-width:900px){
+  .panel{flex-direction:column}
+  .right{width:100%}
+}
+  </style>
+  
 </head>
 <body>
   <main id="app">
@@ -64,6 +118,7 @@
               <button class="chip" data-cmd="weather">weather</button>
               <button class="chip" data-cmd="news">news</button>
               <button class="chip" data-cmd="time">time</button>
+              <button class="chip" data-cmd="tell me a joke">joke</button>
             </div>
           </div>
         </aside>
@@ -75,6 +130,309 @@
     </div>
   </main>
 
-  <script type="module" src="./jarvis.js"></script>
+  <script>
+/*
+ * jarvis.js - Client-side Jarvis with Gemini AI integration
+ */
+
+const state = {
+  lastCommand: null,
+  logs: [],
+  weather: null,
+  news: [],
+  notifEnabled: false
+};
+
+// --- API Keys ---
+// Get your free API keys for the best experience
+const OPENWEATHER_API_KEY = ''; // <-- OpenWeatherMap API key
+const NEWSAPI_KEY = ''; // <-- News API key
+const GEMINI_API_KEY = 'YOUR_GEMINI_API_KEY_HERE'; // <-- **Get your free Gemini API key**
+
+// --- DOM Elements ---
+const logBox = document.getElementById('logBox');
+const holoText = document.getElementById('holoText');
+const userInput = document.getElementById('userInput');
+const sendBtn = document.getElementById('sendBtn');
+const voiceBtn = document.getElementById('voiceBtn');
+const clearBtn = document.getElementById('clearBtn');
+const statusLine = document.getElementById('statusLine');
+const liveList = document.getElementById('liveList');
+const btnNotif = document.getElementById('btn-notif');
+document.getElementById('btn-status').addEventListener('click', () => handleCommand('status'));
+document.getElementById('btn-scan').addEventListener('click', () => handleCommand('run diagnostics')); // New command
+document.getElementById('btn-weather').addEventListener('click', () => handleCommand('weather'));
+document.getElementById('btn-news').addEventListener('click', () => handleCommand('news'));
+
+
+// --- Utility Functions ---
+
+function addLog(text) {
+  const time = new Date().toLocaleTimeString();
+  state.logs.unshift(`${time} • ${text}`);
+  if (state.logs.length > 200) state.logs.pop();
+  renderLogs();
+}
+
+function renderLogs() {
+  logBox.innerHTML = state.logs.map(l => `<div>${l}</div>`).join('');
+}
+
+function setStatus(text) {
+  statusLine.textContent = 'Status: ' + text;
+}
+
+function speak(text) {
+  holoText.textContent = text;
+  addLog('Jarvis: ' + text);
+  const ut = new SpeechSynthesisUtterance(text);
+  // Changed language to ta-IN for better Tamil/Indian English TTS
+  ut.lang = 'ta-IN'; 
+  speechSynthesis.cancel();
+  speechSynthesis.speak(ut);
+}
+
+// --- Gemini AI Core ---
+
+async function handleGeminiCommand(command) {
+    if (!GEMINI_API_KEY || GEMINI_API_KEY === 'YOUR_GEMINI_API_KEY_HERE') {
+        speak("AI செயலாக்கம் இயலவில்லை. Gemini API Key ஐச் சேர்க்கவும்.");
+        return;
+    }
+
+    const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + GEMINI_API_KEY;
+    
+    // System Instruction: Act like Jarvis
+    const systemInstruction = "நீங்கள் Maathu என்பவருக்கு உதவும் ஒரு உதவியாளர். நீங்கள் ஜார்விஸ் (Jarvis) போல, மரியாதையுடனும், நட்புடனும், அறிவாற்றலுடனும் பதிலளிக்க வேண்டும். நீங்கள் தமிழ் மற்றும் ஆங்கிலத்தில் பதிலளிப்பீர்கள். நீங்கள் தமிழ்ப் பெயர் Maathu க்கு பதிலளிக்கும் போது, நீங்கள் ஜார்விஸ் போல பதிலளிக்க வேண்டும்.";
+
+    const prompt = [
+        {
+            role: "system",
+            parts: [{ text: systemInstruction }]
+        },
+        {
+            role: "user",
+            parts: [{ text: command }]
+        }
+    ];
+    
+    try {
+        setStatus('Processing with Gemini...');
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                contents: prompt,
+                config: {
+                    // Set a low temperature for more factual/Jarvis-like responses
+                    temperature: 0.5 
+                }
+            })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            console.error("Gemini API Response Error:", errorData);
+            throw new Error(`API Error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const jarvisResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || "மன்னிக்கவும், நான் புரிந்து கொள்ளவில்லை.";
+        speak(jarvisResponse);
+        
+    } catch (e) {
+        console.error("Gemini Error:", e);
+        speak("AI தொடர்பு தோல்வியடைந்தது. API Key அல்லது நெட்வொர்க் இணைப்பைச் சரிபார்க்கவும்.");
+    }
+}
+
+// --- Command Parser (Router) ---
+
+async function handleCommand(raw) {
+  const cmd = raw.trim().toLowerCase();
+  state.lastCommand = cmd;
+  addLog('User: ' + raw);
+  document.querySelector('#liveList li:nth-child(3)').textContent = 'Last Command: ' + cmd;
+  setStatus('Processing...');
+  
+  try {
+    if (cmd.includes('weather')) {
+      await fetchWeather(); 
+      if (state.weather) {
+        const t = `Location ${state.weather.name}. ${Math.round(state.weather.main.temp)} °C, ${state.weather.weather[0].description}`;
+        speak(`வானிலை தரவுப்படி: ${t}`);
+        notify('Weather Update', t);
+      } else speak('Weather not available. Add API key.');
+    } else if (cmd.includes('time')) {
+      const now = new Date();
+      const t = `Time is ${now.toLocaleTimeString('ta-IN')}`;
+      speak(`தற்போதைய நேரம்: ${t}`);
+    } else if (cmd.includes('news')) {
+      await fetchNews();
+      if (state.news.length) {
+        const t = `Top news: ${state.news[0].title}`;
+        speak(`தலைப்புச் செய்தி: ${t}`);
+        notify('Top News', state.news[0].title);
+      } else speak('No news available. Add News API key.');
+    } else if (cmd.includes('status') || cmd.includes('system status')) {
+      const t = `I am active. Notifications ${state.notifEnabled ? 'enabled' : 'disabled'}. All systems nominal.`;
+      speak(t);
+    } else if (cmd.includes('open youtube')) {
+        speak("Opening YouTube Maathu");
+        window.open("https://youtube.com", "_blank");
+    } else if (cmd.includes('open instagram')) {
+        speak("Opening Instagram");
+        window.open("https://instagram.com", "_blank");
+    } else if (cmd.includes('diagnostics') || cmd.includes('scan')) {
+        // A placeholder "Jarvis" diagnostic response
+        speak('Running system diagnostics. All core processes are stable. Network latency nominal.');
+    } else {
+      // Fallback to Gemini AI for natural language understanding
+      await handleGeminiCommand(raw);
+    }
+  } catch (e) {
+    console.error(e);
+    speak('Something went seriously wrong. Check console.');
+  } finally {
+    setStatus('Idle');
+  }
+}
+
+
+// --- Voice Recognition (Web Speech API) ---
+let recognition = null;
+if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SR();
+  recognition.lang = 'ta-IN'; // Tamil language setting
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+  
+  recognition.onresult = (ev) => {
+    const t = ev.results[0][0].transcript;
+    userInput.value = t;
+    handleCommand(t);
+  };
+  recognition.onerror = (e) => { 
+    addLog('Speech error: ' + e.error); 
+    setStatus('Voice Error');
+    // Prevents listening state from hanging
+    if (e.error !== 'no-speech') speak('I did not catch that. Please try again.');
+  };
+  recognition.onend = () => {
+    setStatus('Idle');
+  };
+  
+} else {
+  voiceBtn.style.display = 'none';
+}
+
+voiceBtn.addEventListener('click', () => {
+  if (!recognition) { speak('Voice recognition not supported in this browser.'); return; }
+  recognition.start();
+  setStatus('Listening...');
+});
+
+// --- User Interaction Bindings ---
+sendBtn.addEventListener('click', () => {
+  const v = userInput.value.trim();
+  if (!v) return;
+  handleCommand(v);
+  userInput.value = '';
+});
+clearBtn.addEventListener('click', () => { userInput.value = ''; });
+
+// quick chips
+document.querySelectorAll('.chip').forEach(c => {
+  c.addEventListener('click', () => handleCommand(c.dataset.cmd));
+});
+
+// --- Live Updates ---
+function renderLive() {
+  document.querySelector('#liveList li:nth-child(1)').textContent = 'Weather: ' + (state.weather ? `${Math.round(state.weather.main.temp)} °C, ${state.weather.weather[0].main}` : '—');
+  document.querySelector('#liveList li:nth-child(2)').textContent = 'News: ' + (state.news[0] ? state.news[0].title : '—');
+}
+setInterval(renderLive, 5000); // Increased interval for efficiency
+
+
+// --- API Fetchers ---
+
+async function fetchWeather() {
+  if (!OPENWEATHER_API_KEY) { addLog('No weather API key.'); return null; }
+  try {
+    const pos = await new Promise((res, rej) => {
+      if (!navigator.geolocation) return res(null);
+      navigator.geolocation.getCurrentPosition(p => res(p.coords), _ => res(null), { timeout: 5000 });
+    });
+    let url;
+    if (pos) url = `https://api.openweathermap.org/data/2.5/weather?lat=${pos.latitude}&lon=${pos.longitude}&units=metric&appid=${OPENWEATHER_API_KEY}`;
+    else url = `https://api.openweathermap.org/data/2.5/weather?q=Chennai&units=metric&appid=${OPENWEATHER_API_KEY}`;
+    const r = await fetch(url);
+    if (!r.ok) throw new Error('Weather fetch failed');
+    state.weather = await r.json();
+    addLog('Weather fetched');
+    return state.weather;
+  } catch (e) {
+    console.error(e);
+    addLog('Weather error');
+    return null;
+  }
+}
+
+async function fetchNews() {
+  if (!NEWSAPI_KEY) { addLog('No news API key.'); return []; }
+  try {
+    const url = `https://newsapi.org/v2/top-headlines?country=in&pageSize=5&apiKey=${NEWSAPI_KEY}`;
+    const r = await fetch(url);
+    if (!r.ok) throw new Error('News fetch failed');
+    const j = await r.json();
+    state.news = j.articles || [];
+    addLog('News fetched: ' + state.news.length);
+    return state.news;
+  } catch (e) {
+    console.error(e);
+    addLog('News error');
+    return [];
+  }
+}
+
+// --- Notifications & PWA ---
+
+btnNotif.addEventListener('click', async () => {
+  if (!('Notification' in window)) { speak('Notifications not supported.'); return; }
+  const perm = await Notification.requestPermission();
+  if (perm === 'granted') {
+    state.notifEnabled = true;
+    addLog('Notifications granted');
+    speak('Notifications enabled');
+  } else {
+    state.notifEnabled = false;
+    speak('Notifications blocked');
+  }
+});
+
+function notify(title, body) {
+  if (!state.notifEnabled) return;
+  try {
+    new Notification(title, { body, icon: './icon-192x192.png' });
+  } catch (e) {
+    console.warn('Notify failed', e);
+  }
+}
+
+// Service worker registration
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').then(reg => {
+    addLog('Service Worker registered');
+  }).catch(e => { addLog('SW register failed: ' + e.message) });
+}
+
+// --- Initial Startup ---
+document.addEventListener('DOMContentLoaded', () => {
+    speak('வணக்கம் Maathu. Jarvis online.');
+    addLog('Jarvis online');
+});
+
+  </script>
 </body>
 </html>
