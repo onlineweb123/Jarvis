@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ta">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Maathu Jarvis — Z Jarvis</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="stylesheet" href="./style.css" />
+  <meta name="theme-color" content="#05223C" />
+</head>
+<body>
+  <main id="app">
+    <div class="hud">
+      <header>
+        <div class="logo">
+          <img src="icon-192x192.png" alt="Jarvis" />
+          <h1>Maathu Jarvis</h1>
+        </div>
+        <nav class="actions">
+          <button id="btn-status" title="Status">Status</button>
+          <button id="btn-scan" title="Scan">Scan</button>
+          <button id="btn-weather" title="Weather">Weather</button>
+          <button id="btn-news" title="News">News</button>
+          <button id="btn-notif" title="Enable Notifications">Notify</button>
+        </nav>
+      </header>
+
+      <section class="panel">
+        <div class="left">
+          <div id="holo" class="holo">
+            <div id="holoText" class="holoText">வணக்கம் Maathu — நான் உன் Jarvis. என்ன செய்றது?</div>
+          </div>
+
+          <div class="controls">
+            <textarea id="userInput" placeholder="Type a command — ஆனா 'Hey Jarvis' சொல்லாம போதும்"></textarea>
+            <div class="ctl-row">
+              <button id="sendBtn">Send</button>
+              <button id="voiceBtn">🎙️ Voice</button>
+              <button id="clearBtn">Clear</button>
+            </div>
+            <div id="statusLine" class="statusLine">Status: Idle</div>
+          </div>
+        </div>
+
+        <aside class="right">
+          <div class="card">
+            <h3>Live</h3>
+            <ul id="liveList" class="list">
+              <li>Weather: —</li>
+              <li>News: —</li>
+              <li>Last Command: —</li>
+            </ul>
+          </div>
+
+          <div class="card">
+            <h3>Logs</h3>
+            <div id="logBox" class="logBox"></div>
+          </div>
+
+          <div class="card small">
+            <h3>Quick Commands</h3>
+            <div class="chips">
+              <button class="chip" data-cmd="status">status</button>
+              <button class="chip" data-cmd="weather">weather</button>
+              <button class="chip" data-cmd="news">news</button>
+              <button class="chip" data-cmd="time">time</button>
+            </div>
+          </div>
+        </aside>
+      </section>
+
+      <footer>
+        <small>Jarvis PWA • Maathu • Test on HTTPS for full features</small>
+      </footer>
+    </div>
+  </main>
+
+  <script type="module" src="./jarvis.js"></script>
+</body>
+</html>
