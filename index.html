@@ -1,504 +1,823 @@
 <!doctype html>
-<!doctype html>
-<html lang="ta">
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Maathu Jarvis — Z Jarvis</title>
-  <link rel="manifest" href="./manifest.json" />
-  <meta name="theme-color" content="#05223C" />
-  
-  <style>
-      /* உங்கள் CSS இங்கே மாறாமல் இருக்கட்டும் */
-      :root{
-  --bg:#071428;
-  --panel:#071c2a;
-  --accent:#00d4ff;
-  --muted:#94b7c6;
-  --glass:rgba(255,255,255,0.03);
-  --card:#0b2a36;
-  font-family: "Inter", system-ui, -apple-system, "Helvetica Neue", Arial;
-}
+    <meta charset="UTF-8">
+    <!-- Required for responsive design and mobile-friendly view -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live GPS Tracker</title>
 
-*{box-sizing:border-box}
-html,body,#app{height:100%;margin:0;background:linear-gradient(180deg,var(--bg) 0%, #02121a 100%);color:#e6f7ff}
-.hud{max-width:1100px;margin:18px auto;padding:20px;border-radius:12px;background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);box-shadow:0 10px 40px rgba(2,6,23,0.6)}
-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
-.logo{display:flex;align-items:center;gap:12px}
-.logo img{width:48px;height:48px;border-radius:8px}
-.logo h1{font-size:18px;margin:0;color:var(--accent)}
-.actions button{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted);padding:8px 10px;margin-left:8px;border-radius:8px;cursor:pointer}
-.actions button:hover{color:var(--accent);border-color:rgba(0,212,255,0.15)}
+    <!-- Load Tailwind CSS (for modern utility classes) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Load Leaflet CSS (for OpenStreetMap styling) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" integrity="sha256-p4NxAo9j9c8N12eB/G7N6gW8K9J+G8g8E0W7D7W7A9Q=" crossorigin=""/>
+    
+    <!-- Load Lucide Icons (for aesthetic UI icons) -->
+    <script src="https://unpkg.com/lucide@latest"></script>
 
-.panel{display:flex;gap:16px}
-.left{flex:1}
-.right{width:320px;display:flex;flex-direction:column;gap:12px}
+    <!-- Custom Theme and Global Styles -->
+    <style>
+        /* Define color variables based on the requirements */
+        :root {
+            --color-primary: #0ea5a4; /* Accent */
+            --color-bg: #0f172a; /* Background */
+            --color-card: #0b1220; /* Card/Input Background */
+            --color-text: #e2e8f0; /* Light text */
+        }
 
-.holo{height:240px;border-radius:12px;background:linear-gradient(180deg, rgba(0,0,0,0.2), rgba(255,255,255,0.01));border:1px solid rgba(255,255,255,0.03);display:flex;align-items:center;justify-content:center;padding:20px;position:relative;overflow:hidden}
-.holo::after{content:"";position:absolute;width:220%;height:1px;background:linear-gradient(90deg, transparent, rgba(0,212,255,0.08), transparent);transform:translateY(-30px) skewX(-12deg)}
-.holoText{font-size:20px;line-height:1.3;text-align:center;color:var(--muted);max-width:90%}
+        /* Set base styles for the dark theme */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--color-bg);
+            color: var(--color-text);
+            /* Ensure full viewport height for mobile responsiveness */
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
 
-.controls{margin-top:12px}
-#userInput{width:100%;height:80px;border-radius:10px;padding:12px;background:var(--glass);border:1px solid rgba(255,255,255,0.03);color:#dff7ff;resize:vertical}
-.ctl-row{display:flex;gap:8px;margin-top:8px}
-.ctl-row button{flex:0 0 auto;padding:10px 14px;border-radius:10px;border:0;background:linear-gradient(90deg, rgba(0,212,255,0.06), rgba(0,212,255,0.02));color:var(--accent);cursor:pointer}
+        /* Glassmorphism Card Style */
+        .glass-card {
+            background-color: rgba(11, 18, 32, 0.7); /* Slightly darker card with transparency */
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(14, 165, 164, 0.2); /* Thin accent border */
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 0 20px rgba(14, 165, 164, 0.1); /* Soft shadow with accent glow */
+            transition: transform 0.2s;
+        }
+        .glass-card:hover {
+            transform: translateY(-2px);
+        }
 
-.statusLine{margin-top:8px;color:var(--muted);font-size:13px}
+        /* Style for the map container */
+        #map {
+            width: 100%;
+            /* Use a fixed height but make it responsive relative to viewport */
+            height: 40vh; 
+            min-height: 300px;
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+        }
 
-.card{background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.03)}
-.card h3{margin:0 0 8px 0;color:var(--accent)}
-.list{list-style:none;padding:0;margin:0;color:var(--muted);font-size:14px}
-.logBox{height:200px;overflow:auto;background:rgba(0,0,0,0.12);padding:8px;border-radius:6px;color:var(--muted);font-family:monospace;font-size:13px}
+        /* Style for all buttons */
+        .btn-action {
+            padding: 0.75rem 1rem;
+            border-radius: 9999px; /* Fully rounded pill shape */
+            font-weight: 600;
+            text-align: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
 
-.chips{display:flex;gap:6px;flex-wrap:wrap}
-.chip{background:transparent;border:1px solid rgba(255,255,255,0.04);padding:6px 10px;border-radius:999px;color:var(--muted);cursor:pointer}
-.chip:hover{color:var(--accent)}
+        /* Specific button colors and hover effects */
+        .btn-start {
+            background-color: var(--color-primary);
+            color: var(--color-card);
+        }
+        .btn-start:hover:enabled {
+            background-color: #0f9091;
+            box-shadow: 0 0 15px var(--color-primary);
+        }
+        .btn-pause {
+            background-color: #f59e0b; /* Amber/Yellow for Pause */
+            color: var(--color-card);
+        }
+        .btn-pause:hover:enabled {
+            background-color: #d97706;
+        }
+        .btn-stop {
+            background-color: #ef4444; /* Red for Stop */
+            color: white;
+        }
+        .btn-stop:hover:enabled {
+            background-color: #dc2626;
+        }
+        .btn-secondary {
+            background-color: var(--color-card);
+            border: 1px solid rgba(14, 165, 164, 0.5);
+            color: var(--color-primary);
+        }
+        .btn-secondary:hover:enabled {
+            background-color: rgba(14, 165, 164, 0.1);
+        }
 
-footer{margin-top:14px;text-align:center;color:var(--muted);font-size:12px}
-@media(max-width:900px){
-  .panel{flex-direction:column}
-  .right{width:100%}
-}
-  </style>
-  
+        /* Disabled state */
+        .btn-action:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+        
+        /* Utility to hide elements */
+        .hidden {
+            display: none !important;
+        }
+
+        /* Modal specific styling */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            width: 90%;
+            max-width: 400px;
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            background-color: var(--color-card);
+            border: 1px solid var(--color-primary);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
+        }
+        .modal-input {
+            width: 100%;
+            padding: 0.75rem;
+            margin-top: 0.5rem;
+            background-color: var(--color-bg);
+            border: 1px solid var(--color-primary);
+            border-radius: 0.5rem;
+            color: var(--color-text);
+        }
+    </style>
+    
+    <!-- Load Leaflet JavaScript (for map functionality) -->
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js" integrity="sha256-200pE3T8y+o5YFf2+5/R/k7kG8uC8u3C9j3A/7J/G8k=" crossorigin=""></script>
 </head>
-<body>
-  <main id="app">
-    <div class="hud">
-      <header>
-        <div class="logo">
-          <img src="icon-192x192.png" alt="Jarvis" />
-          <h1>Maathu Jarvis</h1>
-        </div>
-        <nav class="actions">
-          <button id="btn-status" title="Status">Status</button>
-          <button id="btn-scan" title="Scan">Scan</button>
-          <button id="btn-weather" title="Weather">Weather</button>
-          <button id="btn-news" title="News">News</button>
-          <button id="btn-notif" title="Enable Notifications">Notify</button>
-        </nav>
-      </header>
+<body class="p-4">
+    <!-- Main Application Container -->
+    <main class="w-full max-w-4xl mx-auto flex-grow">
+        <!-- Header -->
+        <header class="text-center mb-6">
+            <h1 class="text-3xl font-bold text-white mb-1 flex items-center justify-center gap-2">
+                <i data-lucide="footprints" class="w-6 h-6 text-yellow-400"></i>
+                Live Activity Tracker
+            </h1>
+            <p class="text-sm text-gray-400">Track your run/walk in real-time.</p>
+        </header>
 
-      <section class="panel">
-        <div class="left">
-          <div id="holo" class="holo">
-            <div id="holoText" class="holoText">வணக்கம் Maathu — நான் உன் Jarvis. என்ன செய்றது?</div>
-          </div>
-
-          <div class="controls">
-            <textarea id="userInput" placeholder="Type a command — ஆனா 'Hey Jarvis' சொல்லாம போதும்"></textarea>
-            <div class="ctl-row">
-              <button id="sendBtn">Send</button>
-              <button id="voiceBtn">🎙️ Voice</button>
-              <button id="clearBtn">Clear</button>
-            </div>
-            <div id="statusLine" class="statusLine">Status: Idle</div>
-          </div>
+        <!-- Status Message Area -->
+        <div id="status-message" class="p-3 mb-4 rounded-lg text-center font-medium bg-red-800 text-white hidden">
+            <!-- Message displayed here for errors (e.g., GPS permission) -->
         </div>
 
-        <aside class="right">
-          <div class="card">
-            <h3>Live</h3>
-            <ul id="liveList" class="list">
-              <li>Weather: —</li>
-              <li>News: —</li>
-              <li>Last Command: —</li>
-            </ul>
-          </div>
-
-          <div class="card">
-            <h3>Logs</h3>
-            <div id="logBox" class="logBox"></div>
-          </div>
-
-          <div class="card small">
-            <h3>Quick Commands</h3>
-            <div class="chips">
-              <button class="chip" data-cmd="status">status</button>
-              <button class="chip" data-cmd="weather">weather</button>
-              <button class="chip" data-cmd="news">news</button>
-              <button class="chip" data-cmd="time">time</button>
-              <button class="chip" data-cmd="tell me a joke">joke</button>
+        <!-- 5 Metric Cards (Responsive Grid) -->
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+            
+            <!-- Distance -->
+            <div class="glass-card p-3 rounded-xl text-center">
+                <div class="text-xs text-gray-400 uppercase tracking-widest">Distance (km)</div>
+                <div id="metric-distance" class="text-2xl font-extrabold text-white mt-1">0.00</div>
             </div>
-          </div>
-        </aside>
-      </section>
 
-      <footer>
-        <small>Jarvis PWA • Maathu • Test on HTTPS for full features</small>
-      </footer>
-    </div>
-  </main>
+            <!-- Time -->
+            <div class="glass-card p-3 rounded-xl text-center">
+                <div class="text-xs text-gray-400 uppercase tracking-widest">Time (h:m:s)</div>
+                <div id="metric-time" class="text-2xl font-extrabold text-white mt-1">00:00:00</div>
+            </div>
 
-  <script>
-/*
- * jarvis.js - Client-side Jarvis with Gemini AI integration
- */
+            <!-- Speed -->
+            <div class="glass-card p-3 rounded-xl text-center">
+                <div class="text-xs text-gray-400 uppercase tracking-widest">Speed (km/h)</div>
+                <div id="metric-speed" class="text-2xl font-extrabold text-white mt-1">0.00</div>
+            </div>
 
-const state = {
-  lastCommand: null,
-  logs: [],
-  weather: null,
-  news: [],
-  notifEnabled: false
-};
+            <!-- Calories -->
+            <div class="glass-card p-3 rounded-xl text-center">
+                <div class="text-xs text-gray-400 uppercase tracking-widest">Calories (kcal)</div>
+                <div id="metric-calories" class="text-2xl font-extrabold text-white mt-1">0</div>
+            </div>
 
-// --- API Keys ---
-// Get your free API keys for the best experience
-const OPENWEATHER_API_KEY = ''; // <-- OpenWeatherMap API key
-const NEWSAPI_KEY = ''; // <-- News API key
-const GEMINI_API_KEY = 'YOUR_GEMINI_API_KEY_HERE'; // <-- **Get your free Gemini API key**
+            <!-- Steps -->
+            <div class="glass-card p-3 rounded-xl text-center">
+                <div class="text-xs text-gray-400 uppercase tracking-widest">Steps (est)</div>
+                <div id="metric-steps" class="text-2xl font-extrabold text-white mt-1">0</div>
+            </div>
+        </div>
 
-// --- DOM Elements ---
-const logBox = document.getElementById('logBox');
-const holoText = document.getElementById('holoText');
-const userInput = document.getElementById('userInput');
-const sendBtn = document.getElementById('sendBtn');
-const voiceBtn = document.getElementById('voiceBtn');
-const clearBtn = document.getElementById('clearBtn');
-const statusLine = document.getElementById('statusLine');
-const liveList = document.getElementById('liveList');
-const btnNotif = document.getElementById('btn-notif');
-document.getElementById('btn-status').addEventListener('click', () => handleCommand('status'));
-document.getElementById('btn-scan').addEventListener('click', () => handleCommand('run diagnostics')); // New command
-document.getElementById('btn-weather').addEventListener('click', () => handleCommand('weather'));
-document.getElementById('btn-news').addEventListener('click', () => handleCommand('news'));
+        <!-- Map Container -->
+        <div id="map" class="glass-card">
+            <!-- Leaflet map will render here -->
+        </div>
 
+        <!-- Button Row (Responsive Flex) -->
+        <div class="flex flex-wrap justify-center gap-3 mb-6">
+            <button id="btn-start" class="btn-action btn-start flex-1 min-w-[100px] md:flex-initial">
+                <i data-lucide="play" class="w-5 h-5"></i> Start
+            </button>
+            <button id="btn-pause" class="btn-action btn-pause flex-1 min-w-[100px] md:flex-initial" disabled>
+                <i data-lucide="pause" class="w-5 h-5"></i> Pause
+            </button>
+            <button id="btn-stop" class="btn-action btn-stop flex-1 min-w-[100px] md:flex-initial" disabled>
+                <i data-lucide="square" class="w-5 h-5"></i> Stop
+            </button>
+            <button id="btn-export" class="btn-action btn-secondary flex-1 min-w-[100px] md:flex-initial" disabled>
+                <i data-lucide="file-text" class="w-5 h-5"></i> Export GPX
+            </button>
+            <button id="btn-manual" class="btn-action btn-secondary flex-1 min-w-[100px] md:flex-initial">
+                <i data-lucide="edit" class="w-5 h-5"></i> Manual Add
+            </button>
+        </div>
+        
+        <!-- Manual Add Modal -->
+        <div id="modal-manual" class="modal-overlay hidden">
+            <div class="modal-content">
+                <h3 class="text-xl font-bold mb-4">Manually Add Activity</h3>
+                <label for="manual-distance" class="block mb-2 text-sm text-gray-300">Distance (km):</label>
+                <input type="number" id="manual-distance" class="modal-input" placeholder="e.g., 5.0" min="0.1" step="0.1" required>
+                <div class="flex justify-end gap-3 mt-4">
+                    <button id="modal-cancel" class="btn-action btn-secondary">Cancel</button>
+                    <button id="modal-submit" class="btn-action btn-start">Add Activity</button>
+                </div>
+            </div>
+        </div>
 
-// --- Utility Functions ---
+    </main>
 
-function addLog(text) {
-  const time = new Date().toLocaleTimeString();
-  state.logs.unshift(`${time} • ${text}`);
-  if (state.logs.length > 200) state.logs.pop();
-  renderLogs();
-}
+    <!-- Footer -->
+    <footer class="mt-auto pt-6 pb-2 text-center text-xs text-gray-500 border-t border-gray-800">
+        <p>Created for Maathu — Uses <a href="https://leafletjs.com/" target="_blank" class="text-primary hover:text-white transition">Leaflet</a> & <a href="https://www.openstreetmap.org/" target="_blank" class="text-primary hover:text-white transition">OpenStreetMap</a></p>
+    </footer>
 
-function renderLogs() {
-  logBox.innerHTML = state.logs.map(l => `<div>${l}</div>`).join('');
-}
+    <!-- JavaScript Logic -->
+    <script>
+        // NOTE: Geolocation API requires a secure context (HTTPS). This app will fail
+        // if served over HTTP, as is standard practice for modern browsers.
+        
+        // --- Configuration & Constants ---
+        const METRICS = {
+            distance: 0, // km
+            time: 0, // seconds
+            speed: 0, // km/h (instantaneous)
+            calories: 0, // kcal
+            steps: 0, // estimated
+            weight: 70, // kg (assumed user weight for calorie calculation)
+            height: 1.72 // meters (172 cm for stride calculation)
+        };
+        const STRIDE_WALK_FACTOR = 0.415; // Stride length = 0.415 * height
+        const STRIDE_RUN_FACTOR = 0.65;  // Stride length = 0.65 * height (used for speed >= 9 km/h)
+        const GPS_JITTER_THRESHOLD = 0.5; // meters (ignore movement less than this)
+        const ONE_MINUTE = 60000; // milliseconds
+        const ONE_HOUR = 3600000; // milliseconds
+        
+        // --- State Variables ---
+        let map;
+        let polyline;
+        let watchId = null; // Stores the ID of the geolocation watch
+        let timerId = null; // Stores the ID of the setInterval timer
+        let isRunning = false;
+        let pathPoints = []; // [{ lat, lng, timestamp }]
+        let startTime = 0;
+        let lastPosition = null;
 
-function setStatus(text) {
-  statusLine.textContent = 'Status: ' + text;
-}
+        // --- DOM Elements ---
+        const mapElement = document.getElementById('map');
+        const statusMessage = document.getElementById('status-message');
+        const metricDistance = document.getElementById('metric-distance');
+        const metricTime = document.getElementById('metric-time');
+        const metricSpeed = document.getElementById('metric-speed');
+        const metricCalories = document.getElementById('metric-calories');
+        const metricSteps = document.getElementById('metric-steps');
+        const btnStart = document.getElementById('btn-start');
+        const btnPause = document.getElementById('btn-pause');
+        const btnStop = document.getElementById('btn-stop');
+        const btnExport = document.getElementById('btn-export');
+        const btnManual = document.getElementById('btn-manual');
+        const modalManual = document.getElementById('modal-manual');
+        const manualDistanceInput = document.getElementById('manual-distance');
+        const modalCancel = document.getElementById('modal-cancel');
+        const modalSubmit = document.getElementById('modal-submit');
 
-function speak(text) {
-  holoText.textContent = text;
-  addLog('Jarvis: ' + text);
-  const ut = new SpeechSynthesisUtterance(text);
-  // Changed language to ta-IN for better Tamil/Indian English TTS
-  ut.lang = 'ta-IN'; 
-  speechSynthesis.cancel();
-  speechSynthesis.speak(ut);
-}
+        // --- Utility Functions ---
 
-// --- Gemini AI Core ---
-
-async function handleGeminiCommand(command) {
-    if (!GEMINI_API_KEY || GEMINI_API_KEY === 'YOUR_GEMINI_API_KEY_HERE') {
-        speak("AI செயலாக்கம் இயலவில்லை. Gemini API Key ஐச் சேர்க்கவும்.");
-        return;
-    }
-
-    const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + GEMINI_API_KEY;
-    
-    // System Instruction: Act like Jarvis
-    const systemInstruction = "நீங்கள் Maathu என்பவருக்கு உதவும் ஒரு உதவியாளர். நீங்கள் ஜார்விஸ் (Jarvis) போல, மரியாதையுடனும், நட்புடனும், அறிவாற்றலுடனும் பதிலளிக்க வேண்டும். நீங்கள் தமிழ் மற்றும் ஆங்கிலத்தில் பதிலளிப்பீர்கள். நீங்கள் தமிழ்ப் பெயர் Maathu க்கு பதிலளிக்கும் போது, நீங்கள் ஜார்விஸ் போல பதிலளிக்க வேண்டும்.";
-
-    const prompt = [
-        {
-            role: "system",
-            parts: [{ text: systemInstruction }]
-        },
-        {
-            role: "user",
-            parts: [{ text: command }]
+        /**
+         * Calculates distance between two coordinates using the Haversine formula.
+         * @param {number} lat1 - Latitude of point 1.
+         * @param {number} lon1 - Longitude of point 1.
+         * @param {number} lat2 - Latitude of point 2.
+         * @param {number} lon2 - Longitude of point 2.
+         * @returns {number} Distance in kilometers.
+         */
+        function haversine(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Earth radius in km
+            const dLat = (lat2 - lat1) * (Math.PI / 180);
+            const dLon = (lon2 - lon1) * (Math.PI / 180);
+            const a = 
+                Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c; // Distance in km
         }
-    ];
-    
-    try {
-        setStatus('Processing with Gemini...');
-        const response = await fetch(API_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                contents: prompt,
-                config: {
-                    // Set a low temperature for more factual/Jarvis-like responses
-                    temperature: 0.5 
+
+        /**
+         * Formats seconds into HH:MM:SS string.
+         * @param {number} totalSeconds - Total seconds elapsed.
+         * @returns {string} Formatted time string.
+         */
+        function formatTime(totalSeconds) {
+            const h = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+            const m = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+            const s = String(totalSeconds % 60).padStart(2, '0');
+            return `${h}:${m}:${s}`;
+        }
+
+        /**
+         * Converts km/h to METs based on the activity intensity.
+         * @param {number} speedKmH - Speed in km/h.
+         * @returns {number} MET value.
+         */
+        function getMetValue(speedKmH) {
+            if (speedKmH > 9.0) return 10.5; // Running fast
+            if (speedKmH >= 6.4) return 7.0; // Running/Jogging
+            if (speedKmH >= 4.8) return 3.8; // Brisk walking
+            return 2.8; // Slow walking
+        }
+
+        /**
+         * Calculates estimated steps based on distance and average speed (for stride selection).
+         * @param {number} distanceKm - Distance covered in km.
+         * @param {number} speedKmH - Average speed over the last segment.
+         * @returns {number} Estimated steps.
+         */
+        function calculateSteps(distanceKm, speedKmH) {
+            // Speed >= 9 km/h is considered running, use running stride factor
+            const factor = speedKmH >= 9.0 ? STRIDE_RUN_FACTOR : STRIDE_WALK_FACTOR;
+            const strideLengthMeters = factor * METRICS.height;
+            const distanceMeters = distanceKm * 1000;
+            return Math.round(distanceMeters / strideLengthMeters);
+        }
+
+        /**
+         * Updates all metric displays in the UI.
+         */
+        function updateUI() {
+            metricDistance.textContent = METRICS.distance.toFixed(2);
+            metricTime.textContent = formatTime(METRICS.time);
+            metricSpeed.textContent = METRICS.speed.toFixed(2);
+            metricCalories.textContent = METRICS.calories.toFixed(0);
+            metricSteps.textContent = METRICS.steps.toFixed(0);
+
+            // Re-render Lucide icons after UI update
+            lucide.createIcons();
+        }
+
+        /**
+         * Displays an error message in the status bar.
+         * @param {string} msg - The message to display.
+         * @param {boolean} isError - If true, uses red background (default: true).
+         */
+        function showStatus(msg, isError = true) {
+            statusMessage.textContent = msg;
+            statusMessage.classList.remove('hidden', 'bg-red-800', 'bg-green-800');
+            statusMessage.classList.add(isError ? 'bg-red-800' : 'bg-green-800');
+            
+            // Auto-hide success messages
+            if (!isError) {
+                setTimeout(() => statusMessage.classList.add('hidden'), 5000);
+            }
+        }
+
+        // --- Geolocation & Tracking Logic ---
+
+        /**
+         * Initializes the Leaflet map centered at a default location.
+         */
+        function initMap() {
+            // Check if map already exists to prevent re-initialization
+            if (map) {
+                map.remove();
+            }
+            // Default center: London, UK (or user's last known position if available)
+            const defaultLat = 51.505;
+            const defaultLng = -0.09;
+
+            map = L.map('map').setView([defaultLat, defaultLng], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+
+            // Initialize polyline layer
+            polyline = L.polyline([], {color: '#0ea5a4', weight: 5}).addTo(map);
+
+            // Ensure icons are created for the initial load
+            lucide.createIcons();
+        }
+
+        /**
+         * Timer function that runs every second to update time and dependent metrics.
+         */
+        function timerTick() {
+            if (!isRunning) return;
+
+            // Update time
+            METRICS.time++;
+
+            // Calculate current total hours for calorie calculation
+            const hours = METRICS.time / 3600;
+            
+            // Get current MET value based on instantaneous speed
+            const metValue = getMetValue(METRICS.speed);
+
+            // Calorie Formula: kcal = MET × weight(kg) × hours
+            // We calculate delta calories since the last tick (1 second)
+            // MET × weight(kg) × (1/3600 hours)
+            const deltaCalories = (metValue * METRICS.weight * (1 / 3600)); 
+            METRICS.calories += deltaCalories;
+
+            updateUI();
+        }
+
+        /**
+         * Success callback for Geolocation.watchPosition().
+         * @param {Position} position - The current geolocation data.
+         */
+        function handlePosition(position) {
+            if (!isRunning) return;
+
+            const { latitude, longitude, timestamp } = position.coords;
+            const newPoint = { lat: latitude, lng: longitude, timestamp: timestamp };
+
+            // 1. Initial Position / Jitter Protection Check
+            if (pathPoints.length > 0) {
+                const lastPoint = pathPoints[pathPoints.length - 1];
+                const distanceMeters = haversine(lastPoint.lat, lastPoint.lng, newPoint.lat, newPoint.lng) * 1000;
+
+                // Ignore position updates if distance is below jitter threshold
+                if (distanceMeters < GPS_JITTER_THRESHOLD) {
+                    // console.log("Jitter ignored:", distanceMeters.toFixed(2), "m");
+                    return;
                 }
-            })
-        });
+                
+                // 2. Distance Calculation (km)
+                const distanceKm = haversine(lastPoint.lat, lastPoint.lng, newPoint.lat, newPoint.lng);
+                METRICS.distance += distanceKm;
 
-        if (!response.ok) {
-            const errorData = await response.json();
-            console.error("Gemini API Response Error:", errorData);
-            throw new Error(`API Error: ${response.status}`);
+                // 3. Speed Calculation (Instantaneous)
+                const timeDiffSeconds = (newPoint.timestamp - lastPoint.timestamp) / 1000;
+                // speed = distance / time. Convert km/s to km/h: distanceKm / timeDiffSeconds * 3600
+                METRICS.speed = timeDiffSeconds > 0 ? (distanceKm / timeDiffSeconds) * 3600 : 0;
+                
+                // 4. Steps Estimation
+                // Steps are estimated based on distance added in this segment and speed
+                const segmentSteps = calculateSteps(distanceKm, METRICS.speed);
+                METRICS.steps += segmentSteps;
+
+                // 5. Update Map and Path
+                polyline.addLatLng([newPoint.lat, newPoint.lng]);
+                map.panTo([newPoint.lat, newPoint.lng]);
+            } else {
+                // First point - center map and add start marker
+                L.marker([newPoint.lat, newPoint.lng], {
+                    icon: L.divIcon({className: 'start-marker', html: '<i data-lucide="play-circle" class="text-green-500 w-8 h-8 font-bold"></i>', iconSize: [32, 32]})
+                }).addTo(map).bindPopup("Start").openPopup();
+                map.setView([newPoint.lat, newPoint.lng], 16);
+            }
+
+            pathPoints.push(newPoint);
+            updateUI();
         }
 
-        const data = await response.json();
-        const jarvisResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || "மன்னிக்கவும், நான் புரிந்து கொள்ளவில்லை.";
-        speak(jarvisResponse);
-        
-    } catch (e) {
-        console.error("Gemini Error:", e);
-        speak("AI தொடர்பு தோல்வியடைந்தது. API Key அல்லது நெட்வொர்க் இணைப்பைச் சரிபார்க்கவும்.");
-    }
-}
-
-// --- Command Parser (Router) ---
-
-async function handleCommand(raw) {
-  const cmd = raw.trim().toLowerCase();
-  state.lastCommand = cmd;
-  addLog('User: ' + raw);
-  document.querySelector('#liveList li:nth-child(3)').textContent = 'Last Command: ' + cmd;
-  setStatus('Processing...');
-  
-  try {
-    if (cmd.includes('weather')) {
-      await fetchWeather(); 
-      if (state.weather) {
-        const t = `Location ${state.weather.name}. ${Math.round(state.weather.main.temp)} °C, ${state.weather.weather[0].description}`;
-        speak(`வானிலை தரவுப்படி: ${t}`);
-        notify('Weather Update', t);
-      } else speak('Weather not available. Add API key.');
-    } else if (cmd.includes('time')) {
-      const now = new Date();
-      const t = `Time is ${now.toLocaleTimeString('ta-IN')}`;
-      speak(`தற்போதைய நேரம்: ${t}`);
-    } else if (cmd.includes('news')) {
-      await fetchNews();
-      if (state.news.length) {
-        const t = `Top news: ${state.news[0].title}`;
-        speak(`தலைப்புச் செய்தி: ${t}`);
-        notify('Top News', state.news[0].title);
-      } else speak('No news available. Add News API key.');
-    } else if (cmd.includes('status') || cmd.includes('system status')) {
-      const t = `I am active. Notifications ${state.notifEnabled ? 'enabled' : 'disabled'}. All systems nominal.`;
-      speak(t);
-    } else if (cmd.includes('open youtube')) {
-        speak("Opening YouTube Maathu");
-        window.open("https://youtube.com", "_blank");
-    } else if (cmd.includes('open instagram')) {
-        speak("Opening Instagram");
-        window.open("https://instagram.com", "_blank");
-    } else if (cmd.includes('diagnostics') || cmd.includes('scan')) {
-        // A placeholder "Jarvis" diagnostic response
-        speak('Running system diagnostics. All core processes are stable. Network latency nominal.');
-    } else {
-      // Fallback to Gemini AI for natural language understanding
-      await handleGeminiCommand(raw);
-    }
-  } catch (e) {
-    console.error(e);
-    speak('Something went seriously wrong. Check console.');
-  } finally {
-    setStatus('Idle');
-  }
-}
-
-
-// --- Voice Recognition (Web Speech API) ---
-let recognition = null;
-if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  recognition = new SR();
-  recognition.lang = 'ta-IN'; // Tamil language setting
-  recognition.interimResults = false;
-  recognition.maxAlternatives = 1;
-  
-  recognition.onresult = (ev) => {
-    const t = ev.results[0][0].transcript;
-    userInput.value = t;
-    handleCommand(t);
-  };
-  recognition.onerror = (e) => { 
-    addLog('Speech error: ' + e.error); 
-    setStatus('Voice Error');
-    // Prevents listening state from hanging
-    if (e.error !== 'no-speech') speak('I did not catch that. Please try again.');
-  };
-  recognition.onend = () => {
-    setStatus('Idle');
-  };
-  
-} else {
-  voiceBtn.style.display = 'none';
-}
-
-voiceBtn.addEventListener('click', () => {
-  if (!recognition) { speak('Voice recognition not supported in this browser.'); return; }
-  recognition.start();
-  setStatus('Listening...');
-});
-
-// --- User Interaction Bindings ---
-sendBtn.addEventListener('click', () => {
-  const v = userInput.value.trim();
-  if (!v) return;
-  handleCommand(v);
-  userInput.value = '';
-});
-clearBtn.addEventListener('click', () => { userInput.value = ''; });
-
-// quick chips
-document.querySelectorAll('.chip').forEach(c => {
-  c.addEventListener('click', () => handleCommand(c.dataset.cmd));
-});
-
-// --- Live Updates ---
-function renderLive() {
-  document.querySelector('#liveList li:nth-child(1)').textContent = 'Weather: ' + (state.weather ? `${Math.round(state.weather.main.temp)} °C, ${state.weather.weather[0].main}` : '—');
-  document.querySelector('#liveList li:nth-child(2)').textContent = 'News: ' + (state.news[0] ? state.news[0].title : '—');
-}
-setInterval(renderLive, 5000); // Increased interval for efficiency
-
-
-// --- API Fetchers ---
-
-async function fetchWeather() {
-  if (!OPENWEATHER_API_KEY) { addLog('No weather API key.'); return null; }
-  try {
-    const pos = await new Promise((res, rej) => {
-      if (!navigator.geolocation) return res(null);
-      navigator.geolocation.getCurrentPosition(p => res(p.coords), _ => res(null), { timeout: 5000 });
-    });
-    let url;
-    if (pos) url = `https://api.openweathermap.org/data/2.5/weather?lat=${pos.latitude}&lon=${pos.longitude}&units=metric&appid=${OPENWEATHER_API_KEY}`;
-    else url = `https://api.openweathermap.org/data/2.5/weather?q=Chennai&units=metric&appid=${OPENWEATHER_API_KEY}`;
-    const r = await fetch(url);
-    if (!r.ok) throw new Error('Weather fetch failed');
-    state.weather = await r.json();
-    addLog('Weather fetched');
-    return state.weather;
-  } catch (e) {
-    console.error(e);
-    addLog('Weather error');
-    return null;
-  }
-}
-
-async function fetchNews() {
-  if (!NEWSAPI_KEY) { addLog('No news API key.'); return []; }
-  try {
-    const url = `https://newsapi.org/v2/top-headlines?country=in&pageSize=5&apiKey=${NEWSAPI_KEY}`;
-    const r = await fetch(url);
-    if (!r.ok) throw new Error('News fetch failed');
-    const j = await r.json();
-    state.news = j.articles || [];
-    addLog('News fetched: ' + state.news.length);
-    return state.news;
-  } catch (e) {
-    console.error(e);
-    addLog('News error');
-    return [];
-  }
-}
-
-// --- Notifications & PWA ---
-
-btnNotif.addEventListener('click', async () => {
-  if (!('Notification' in window)) { speak('Notifications not supported.'); return; }
-  const perm = await Notification.requestPermission();
-  if (perm === 'granted') {
-    state.notifEnabled = true;
-    addLog('Notifications granted');
-    speak('Notifications enabled');
-  } else {
-    state.notifEnabled = false;
-    speak('Notifications blocked');
-  }
-});
-
-function notify(title, body) {
-  if (!state.notifEnabled) return;
-  try {
-    new Notification(title, { body, icon: './icon-192x192.png' });
-  } catch (e) {
-    console.warn('Notify failed', e);
-  }
-}
-
-// Service worker registration
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js').then(reg => {
-    addLog('Service Worker registered');
-  }).catch(e => { addLog('SW register failed: ' + e.message) });
-}
-
-// --- Initial Startup ---
-document.addEventListener('DOMContentLoaded', () => {
-    speak('வணக்கம் Maathu. Jarvis online.');
-    addLog('Jarvis online');
-});
-
-// Add your Gemini API Key here (Get one for free)
-const GEMINI_API_KEY = 'YOUR_GEMINI_API_KEY_HERE';
-
-// Import necessary library (needs a script tag in HTML head for full use, 
-// but for a simple PWA demo, we'll use a direct fetch or a client library if possible)
-
-// Simplified fetch-based AI call for a PWA demo
-async function handleGeminiCommand(command) {
-    if (!GEMINI_API_KEY) {
-        speak("AI செயலாக்கம் இயலவில்லை. Gemini API Key ஐச் சேர்க்கவும்.");
-        return;
-    }
-
-    const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + GEMINI_API_KEY;
-    
-    // System Instruction: Tell Gemini to act like Jarvis
-    const systemInstruction = "நீங்கள் Maathu என்பவருக்கு உதவும் ஒரு உதவியாளர். நீங்கள் ஜார்விஸ் (Jarvis) போல, மரியாதையுடனும், நட்புடனும், அறிவாற்றலுடனும் பதிலளிக்க வேண்டும். நீங்கள் தமிழ் மற்றும் ஆங்கிலத்தில் பதிலளிப்பீர்கள். நீங்கள் தமிழ்ப் பெயர் Maathu க்கு பதிலளிக்கும் போது, நீங்கள் ஜார்விஸ் போல பதிலளிக்க வேண்டும்.";
-
-    const prompt = [
-        {
-            role: "system",
-            parts: [{ text: systemInstruction }]
-        },
-        {
-            role: "user",
-            parts: [{ text: command }]
+        /**
+         * Error callback for Geolocation.watchPosition().
+         * @param {GeolocationPositionError} error - The error object.
+         */
+        function handlePositionError(error) {
+            stopTracking(false); // Stop tracking but don't finalize the run
+            let msg = "Geolocation Error: ";
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    msg += "Permission Denied. Please enable GPS and allow location access.";
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    msg += "Location information is unavailable.";
+                    break;
+                case error.TIMEOUT:
+                    msg += "The request to get user location timed out.";
+                    break;
+                default:
+                    msg += "An unknown error occurred.";
+            }
+            showStatus(msg, true);
+            console.error(msg, error);
         }
-    ];
 
-    try {
-        const response = await fetch(API_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: prompt })
+        // --- Control Functions ---
+
+        /**
+         * Starts the tracking session and timer.
+         */
+        function startTracking() {
+            // Reset if starting a new run
+            if (watchId !== null) {
+                navigator.geolocation.clearWatch(watchId);
+                clearInterval(timerId);
+            }
+
+            // Reset all state for a fresh start
+            Object.assign(METRICS, { distance: 0, time: 0, speed: 0, calories: 0, steps: 0 });
+            pathPoints = [];
+            lastPosition = null;
+            startTime = Date.now();
+            isRunning = true;
+            updateUI();
+            
+            // Re-initialize map and polyline
+            initMap();
+            
+            // Clear status message
+            statusMessage.classList.add('hidden');
+
+            // Start timer independent of GPS updates
+            timerId = setInterval(timerTick, 1000);
+
+            // Start GPS watch
+            watchId = navigator.geolocation.watchPosition(
+                handlePosition, 
+                handlePositionError, 
+                {
+                    enableHighAccuracy: true,
+                    timeout: 5000,
+                    maximumAge: 0 // Don't use cached position
+                }
+            );
+
+            // Update button states
+            btnStart.disabled = true;
+            btnPause.disabled = false;
+            btnStop.disabled = false;
+            btnExport.disabled = true;
+            btnManual.disabled = true;
+            showStatus("Tracking started...", false);
+        }
+
+        /**
+         * Pauses the tracking session and timer.
+         */
+        function pauseTracking() {
+            isRunning = false;
+            clearInterval(timerId);
+            // GPS watch continues running but position handler ignores updates
+            // navigator.geolocation.clearWatch(watchId); // Keep watch active to save battery on re-start
+            
+            // Update button states
+            btnStart.disabled = true;
+            btnPause.disabled = true;
+            btnStop.disabled = false;
+            btnExport.disabled = true;
+            btnManual.disabled = true;
+
+            showStatus("Tracking paused. Tap 'Resume' to continue.", false);
+            btnPause.textContent = 'Resume';
+            btnPause.classList.remove('btn-pause');
+            btnPause.classList.add('btn-start');
+            btnPause.querySelector('i').setAttribute('data-lucide', 'play');
+            lucide.createIcons(); // Update the icon
+        }
+
+        /**
+         * Resumes a paused tracking session.
+         */
+        function resumeTracking() {
+            isRunning = true;
+            timerId = setInterval(timerTick, 1000);
+            
+            // Update button states
+            btnStart.disabled = true;
+            btnPause.disabled = false;
+            btnStop.disabled = false;
+            btnExport.disabled = true;
+            btnManual.disabled = true;
+
+            showStatus("Tracking resumed.", false);
+            btnPause.textContent = 'Pause';
+            btnPause.classList.remove('btn-start');
+            btnPause.classList.add('btn-pause');
+            btnPause.querySelector('i').setAttribute('data-lucide', 'pause');
+            lucide.createIcons(); // Update the icon
+        }
+
+        /**
+         * Stops the tracking session, freezes all metrics, and prepares for export.
+         * @param {boolean} finalize - If true, finalizes the run (sets end marker, enables export).
+         */
+        function stopTracking(finalize = true) {
+            isRunning = false;
+            if (watchId !== null) {
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+            }
+            clearInterval(timerId);
+            timerId = null;
+            
+            // Update button states
+            btnStart.disabled = false;
+            btnPause.disabled = true;
+            btnStop.disabled = true;
+            btnManual.disabled = false;
+
+            // Reset Pause/Resume button to 'Pause' state for next run
+            btnPause.textContent = 'Pause';
+            btnPause.classList.remove('btn-start');
+            btnPause.classList.add('btn-pause');
+            if (btnPause.querySelector('i')) {
+                btnPause.querySelector('i').setAttribute('data-lucide', 'pause');
+            }
+            lucide.createIcons();
+            
+            if (finalize) {
+                if (METRICS.distance > 0) {
+                    showStatus("Activity complete! You can now export your GPX file.", false);
+                    btnExport.disabled = false;
+
+                    // Add end marker if points exist
+                    if (pathPoints.length > 0) {
+                        const lastPoint = pathPoints[pathPoints.length - 1];
+                        L.marker([lastPoint.lat, lastPoint.lng], {
+                             icon: L.divIcon({className: 'end-marker', html: '<i data-lucide="flag-checkered" class="text-red-500 w-8 h-8 font-bold"></i>', iconSize: [32, 32]})
+                        }).addTo(map).bindPopup("End").openPopup();
+                    }
+                } else {
+                    showStatus("Activity stopped. Distance was 0.00 km.", true);
+                    btnExport.disabled = true;
+                }
+            } else {
+                // If stopping without finalizing (e.g., on error)
+                btnExport.disabled = true;
+            }
+            
+            METRICS.speed = 0; // Reset instantaneous speed on stop
+            updateUI();
+        }
+
+        // --- Manual Activity Logic ---
+
+        /**
+         * Opens the manual distance input modal.
+         */
+        function openManualModal() {
+            modalManual.classList.remove('hidden');
+            manualDistanceInput.value = '';
+        }
+
+        /**
+         * Closes the manual distance input modal.
+         */
+        function closeManualModal() {
+            modalManual.classList.add('hidden');
+        }
+
+        /**
+         * Handles the submission of manual activity.
+         */
+        function handleManualSubmit() {
+            const distance = parseFloat(manualDistanceInput.value);
+            
+            if (isNaN(distance) || distance <= 0) {
+                alert("Please enter a valid distance greater than 0.");
+                return;
+            }
+
+            // Create fake points for GPX consistency, assuming a straight line start-end
+            const fakeLat = 40.7128; // New York - a random central location
+            const fakeLng = -74.0060;
+            const now = Date.now();
+
+            pathPoints = [
+                { lat: fakeLat, lng: fakeLng, timestamp: now - ONE_MINUTE }, // Start point (1 min ago)
+                { lat: fakeLat + (distance / 111), lng: fakeLng, timestamp: now } // End point (1 km is approx 1/111 deg lat)
+            ];
+
+            // Calculate metrics for manual entry
+            METRICS.distance = distance;
+            METRICS.time = Math.round(distance / 5 * 3600); // Assume 5 km/h for walking pace
+            METRICS.speed = 5.00; // Fixed 5 km/h for the segment calculation
+            
+            // Calculate calories based on assumed time/speed
+            const hours = METRICS.time / 3600;
+            const metValue = getMetValue(METRICS.speed); // 3.8 METs for 5 km/h
+            METRICS.calories = metValue * METRICS.weight * hours;
+
+            // Calculate steps based on assumed speed
+            const distanceMeters = distance * 1000;
+            const strideLengthMeters = STRIDE_WALK_FACTOR * METRICS.height;
+            METRICS.steps = Math.round(distanceMeters / strideLengthMeters);
+
+            // Update UI and map (for visualization on export)
+            updateUI();
+            
+            // Re-initialize map
+            initMap();
+            // Add start/end markers
+            L.marker([pathPoints[0].lat, pathPoints[0].lng]).addTo(map).bindPopup("Manual Start").openPopup();
+            L.marker([pathPoints[1].lat, pathPoints[1].lng]).addTo(map).bindPopup("Manual End").openPopup();
+            // Update polyline
+            polyline.setLatLngs(pathPoints.map(p => [p.lat, p.lng]));
+            map.fitBounds(polyline.getBounds());
+            
+            closeManualModal();
+            stopTracking(false); // Manually set metrics, but run is "stopped"
+            btnExport.disabled = false;
+            showStatus(`Manually added ${distance.toFixed(2)} km.`, false);
+        }
+
+
+        // --- GPX Export Logic ---
+
+        /**
+         * Generates and downloads a GPX file.
+         */
+        function exportGpx() {
+            if (METRICS.distance === 0 || pathPoints.length < 2) {
+                showStatus("Cannot export: Distance is 0 or not enough points.", true);
+                return;
+            }
+
+            const now = new Date();
+            const gpxStartTime = new Date(pathPoints[0].timestamp).toISOString();
+            
+            // XML header and metadata
+            let gpx = '<?xml version="1.0" encoding="UTF-8" standalone="no" ?>\n';
+            gpx += '<gpx creator="Live GPS Tracker for Maathu" version="1.1" xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">\n';
+            
+            // Metadata (optional but good practice)
+            gpx += ' <metadata>\n';
+            gpx += `  <time>${gpxStartTime}</time>\n`;
+            gpx += `  <name>Activity ${now.toLocaleString()}</name>\n`;
+            gpx += ' </metadata>\n';
+
+            // Track segment
+            gpx += ' <trk>\n';
+            gpx += '  <trkseg>\n';
+
+            // Track points (trkpts)
+            pathPoints.forEach(point => {
+                const isoTime = new Date(point.timestamp).toISOString();
+                gpx += `   <trkpt lat="${point.lat.toFixed(6)}" lon="${point.lng.toFixed(6)}">\n`;
+                // Add time tag
+                gpx += `    <time>${isoTime}</time>\n`; 
+                gpx += '   </trkpt>\n';
+            });
+
+            gpx += '  </trkseg>\n';
+            gpx += ' </trk>\n';
+            gpx += '</gpx>\n';
+
+            // Create Blob and download link
+            const blob = new Blob([gpx], { type: 'application/gpx+xml' });
+            const filename = `activity-${now.toISOString().substring(0, 19).replace(/[:T]/g, '-')}.gpx`;
+            
+            // Create a temporary link element for downloading
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = filename;
+            
+            // Simulate a click to trigger download
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+
+            showStatus(`Exported ${filename}`, false);
+        }
+
+        // --- Event Listeners and Initialization ---
+
+        // Setup event listeners
+        btnStart.addEventListener('click', startTracking);
+        btnPause.addEventListener('click', () => {
+            isRunning ? pauseTracking() : resumeTracking();
         });
-
-        if (!response.ok) throw new Error(`API Error: ${response.status}`);
-
-        const data = await response.json();
-        // Extract text from the response
-        const jarvisResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || "மன்னிக்கவும், நான் புரிந்து கொள்ளவில்லை.";
-        speak(jarvisResponse);
+        btnStop.addEventListener('click', () => stopTracking(true));
+        btnExport.addEventListener('click', exportGpx);
+        btnManual.addEventListener('click', openManualModal);
         
-    } catch (e) {
-        console.error("Gemini Error:", e);
-        speak("AI தொடர்பு தோல்வியடைந்தது. API Key அல்லது நெட்வொர்க் இணைப்பைச் சரிபார்க்கவும்.");
-    }
-}
-
-// பழைய handleCommand ஃபங்ஷனை மாற்றவும்
-async function handleCommand(raw) {
-    // ... (existing code for setting lastCommand, addLog, setStatus) ...
-    const cmd = raw.trim().toLowerCase();
-    
-    // Basic commands (weather, time, news) can still be handled locally for speed
-    if (cmd.includes('weather') || cmd.includes('time') || cmd.includes('news') || cmd.includes('status')) {
-        // ... (existing logic for these commands) ...
-    } else {
-        // மற்ற எல்லா கட்டளைகளையும் Gemini-க்கு அனுப்பவும்
-        await handleGeminiCommand(raw); 
-    }
-    
-    // ... (existing finally block) ...
-}
-
-
-  </script>
+        modalCancel.addEventListener('click', closeManualModal);
+        modalSubmit.addEventListener('click', handleManualSubmit);
+        // Also close modal if clicking outside the content
+        modalManual.addEventListener('click', (e) => {
+            if (e.target === modalManual) {
+                closeManualModal();
+            }
+        });
+        
+        // Initial setup
+        window.onload = () => {
+            initMap();
+            updateUI();
+            showStatus("Ready to start tracking. Please ensure GPS is enabled.", false);
+        };
+    </script>
 </body>
 </html>
+
